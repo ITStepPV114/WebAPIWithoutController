@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Using WebAPI</title>
+    <style>
+        td {
+            padding: 5px;
+        }
+
+        button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Список користувачів</h2>
+    <div>
+        <input type="hidden" id="userId" />
+        <p>
+            Ім'я:<br />
+            <input id="userName" />
+        </p>
+        <p>
+            Вік:<br />
+            <input id="userAge" type="number" />
+        </p>
+        <p>
+            <button id="saveBtn">Зберегти</button>
+            <button id="resetBtn">Скинути</button>
+        </p>
+    </div>
+    <table>
+        <thead><tr><th>Ім'я</th><th>Вік</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+    // Отримання всіх користувачів
+        async function getUsers() {
+            // надсилає запит і отримуємо відповідь
+            const response = await fetch("/api/users", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            // якщо запит пройшов нормально
+            if (response.ok === true) {
+                // Отримуємо дані
+                const users = await response.json();
+                const rows = document.querySelector("tbody");
+                // додаємо отримані елементи до таблиці
+                users.forEach(user => rows.append(row(user)));
+            }
+        }
+        // Отримання одного користувача
+        async function getUser(id) {
+            const response = await fetch(`/api/users/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.getElementById("userId").value = user.id;
+                document.getElementById("userName").value = user.name;
+                document.getElementById("userAge").value = user.age;
+            }
+            else {
+                // якщо сталася помилка, отримуємо повідомлення про помилку
+                const error = await response.json();
+                console.log(error.message); // і виводимо його на консоль
+            }
+        }
+        // Додавання користувача
+        async function createUser(userName, userAge) {
+
+            const response = await fetch("api/users", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: userName,
+                    age: parseInt(userAge, 10)
+                })
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.querySelector("tbody").append(row(user));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        // Зміна користувача
+        async function editUser(userId, userName, userAge) {
+            const response = await fetch("api/users", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: userId,
+                    name: userName,
+                    age: parseInt(userAge, 10)
+                })
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.querySelector(`tr[data-rowid='${user.id}']`).replaceWith(row(user));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        // Видалення користувача
+        async function deleteUser(id) {
+            const response = await fetch(`/api/users/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const user = await response.json();
+                document.querySelector(`tr[data-rowid='${user.id}']`).remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // скидання даних форми після відправки
+        function reset() {
+            document.getElementById("userId").value =
+                document.getElementById("userName").value =
+                document.getElementById("userAge").value = "";
+        }
+        // Створення рядка для таблиці
+        function row(user) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", user.id);
+
+            const nameTd = document.createElement("td");
+            nameTd.append(user.name);
+            tr.append(nameTd);
+
+            const ageTd = document.createElement("td");
+            ageTd.append(user.age);
+            tr.append(ageTd);
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("button");
+            editLink.append("Змінити");
+            editLink.addEventListener("click", async () => await getUser(user.id));
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("button");
+            removeLink.append("Видалити");
+            removeLink.addEventListener("click", async () => await deleteUser(user.id));
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+        // скидання форми
+        document.getElementById("resetBtn").addEventListener("click", () => reset());
+
+        // відправка форми
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+
+            const id = document.getElementById("userId").value;
+            const name = document.getElementById("userName").value;
+            const age = document.getElementById("userAge").value;
+            if (id === "")
+                await createUser(name, age);
+            else
+                await editUser(id, name, age);
+            reset();
+        });
+
+        // завантаження користувачів
+        getUsers();
+    </script>
+</body>
+</html>
